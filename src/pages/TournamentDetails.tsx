@@ -1,4 +1,4 @@
-import { ChevronRight, Edit, Plus, Trash, Trophy, Users } from "lucide-react";
+import { BarChart3, ChevronRight, Edit, Plus, Trash, Trophy, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Badge } from "../components/ui/badge";
@@ -7,12 +7,12 @@ import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import {
-    ResponsiveDialog,
-    ResponsiveDialogContent,
-    ResponsiveDialogDescription,
-    ResponsiveDialogFooter,
-    ResponsiveDialogHeader,
-    ResponsiveDialogTitle,
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
 } from "../components/ui/responsive-dialog";
 import { ScrollArea } from "../components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
@@ -57,6 +57,13 @@ const TournamentDetails = () => {
       loadTournament();
     }
   }, [tournamentId]);
+
+  // Recalcular o ranking sempre que as partidas ou participantes mudarem
+  useEffect(() => {
+    if (tournament && participants.length > 0) {
+      calculateRanking(matches, tournament.participants);
+    }
+  }, [matches, participants]);
 
   const loadTournament = async () => {
     setIsLoading(true);
@@ -146,46 +153,57 @@ const TournamentDetails = () => {
       }
     });
     
-    // Calculate stats based on matches
-    matchesData.forEach(match => {
-      if (match.participant1Score !== undefined && match.participant2Score !== undefined) {
-        const p1 = match.participant1Id;
-        const p2 = match.participant2Id;
-        
-        if (match.participant1Score > match.participant2Score) {
-          // Player 1 wins
-          if (rankingData[p1]) {
-            rankingData[p1].wins += 1;
-            rankingData[p1].points += 3;
-          }
-          if (rankingData[p2]) {
-            rankingData[p2].losses += 1;
-          }
-        } else if (match.participant1Score < match.participant2Score) {
-          // Player 2 wins
-          if (rankingData[p2]) {
-            rankingData[p2].wins += 1;
-            rankingData[p2].points += 3;
-          }
-          if (rankingData[p1]) {
-            rankingData[p1].losses += 1;
-          }
-        } else {
-          // Draw
-          if (rankingData[p1]) {
-            rankingData[p1].draws += 1;
-            rankingData[p1].points += 1;
-          }
-          if (rankingData[p2]) {
-            rankingData[p2].draws += 1;
-            rankingData[p2].points += 1;
-          }
+    // Calculate stats based on matches with scores
+    const matchesWithScores = matchesData.filter(
+      match => match.participant1Score !== undefined && match.participant2Score !== undefined
+    );
+    
+    matchesWithScores.forEach(match => {
+      const p1 = match.participant1Id;
+      const p2 = match.participant2Id;
+      
+      if (match.participant1Score! > match.participant2Score!) {
+        // Player 1 wins
+        if (rankingData[p1]) {
+          rankingData[p1].wins += 1;
+          rankingData[p1].points += 3;
+        }
+        if (rankingData[p2]) {
+          rankingData[p2].losses += 1;
+        }
+      } else if (match.participant1Score! < match.participant2Score!) {
+        // Player 2 wins
+        if (rankingData[p2]) {
+          rankingData[p2].wins += 1;
+          rankingData[p2].points += 3;
+        }
+        if (rankingData[p1]) {
+          rankingData[p1].losses += 1;
+        }
+      } else {
+        // Draw
+        if (rankingData[p1]) {
+          rankingData[p1].draws += 1;
+          rankingData[p1].points += 1;
+        }
+        if (rankingData[p2]) {
+          rankingData[p2].draws += 1;
+          rankingData[p2].points += 1;
         }
       }
     });
     
-    // Convert to array and sort by points
-    const sortedRanking = Object.values(rankingData).sort((a, b) => b.points - a.points);
+    // Convert to array and sort by points (and then by wins if points are equal)
+    const sortedRanking = Object.values(rankingData).sort((a, b) => {
+      if (b.points !== a.points) {
+        return b.points - a.points; // Primeiro por pontos
+      }
+      if (b.wins !== a.wins) {
+        return b.wins - a.wins; // Depois por vitórias
+      }
+      return a.losses - b.losses; // Por fim, menos derrotas
+    });
+    
     setRanking(sortedRanking);
   };
 
@@ -411,21 +429,28 @@ const TournamentDetails = () => {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">{tournament.name}</h1>
           <div className="flex flex-wrap gap-2 mt-1">
-            <Badge variant="outline">
+            <Badge variant={tournament.type === TournamentType.PLAYERS ? "players" : "teams"}>
               {tournament.type === TournamentType.PLAYERS ? "Jogadores" : "Times"}
             </Badge>
-            <Badge variant={tournament.status === TournamentStatus.CREATED 
-              ? "secondary" 
-              : tournament.status === TournamentStatus.IN_PROGRESS 
-                ? "default" 
-                : "outline"}>
+            <Badge variant={
+              tournament.status === TournamentStatus.CREATED 
+                ? "created" 
+                : tournament.status === TournamentStatus.IN_PROGRESS 
+                  ? "in-progress" 
+                  : "finished"
+            }>
               {tournament.status === TournamentStatus.CREATED ? "Criado" : 
                tournament.status === TournamentStatus.IN_PROGRESS ? "Em Andamento" : "Finalizado"}
             </Badge>
+            {tournament.type === TournamentType.TEAMS && tournament.format && (
+              <Badge variant={tournament.format === TournamentFormat.BEST_OF_3 ? "best-of-3" : "best-of-5"}>
+                {tournament.format === TournamentFormat.BEST_OF_3 ? "Melhor de 3" : "Melhor de 5"}
+              </Badge>
+            )}
           </div>
         </div>
         <Button 
-          variant="outline"
+          variant="destructive"
           size="sm"
           onClick={() => setIsDeleteDialogOpen(true)}
           className="self-end sm:self-auto"
@@ -447,7 +472,7 @@ const TournamentDetails = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="flex items-center">
+                <CardTitle className="flex items-cente mb-2">
                   <Trophy className="h-5 w-5 mr-2" />
                   Ranking
                 </CardTitle>
@@ -460,37 +485,53 @@ const TournamentDetails = () => {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {ranking.map((item, index) => (
-                        <div 
-                          key={item.id} 
-                          className="flex items-center justify-between p-2 rounded-md bg-muted/20"
-                        >
-                          <div className="flex items-center gap-3">
-                            <Badge variant={index < 3 ? "default" : "outline"} className="w-6 h-6 flex items-center justify-center p-0">
-                              {index + 1}
-                            </Badge>
-                            <span className="font-medium">{item.name}</span>
+                      {ranking.map((item, index) => {
+                        // Determinar a variante do badge com base na posição
+                        const badgeVariant = index === 0 
+                          ? "gold" 
+                          : index === 1 
+                            ? "silver" 
+                            : index === 2 
+                              ? "bronze" 
+                              : "outline";
+                        
+                        return (
+                          <div 
+                            key={item.id} 
+                            className={`flex items-center justify-between p-2 rounded-md ${
+                              index < 3 ? 'bg-primary/5 border border-primary/20' : 'bg-muted/20'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <Badge 
+                                variant={badgeVariant} 
+                                className="w-6 h-6 flex items-center justify-center p-0"
+                              >
+                                {index + 1}
+                              </Badge>
+                              <span className="font-medium">{item.name}</span>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm">
+                              <div className="flex flex-col items-center">
+                                <span className="text-muted-foreground text-xs">V</span>
+                                <span>{item.wins}</span>
+                              </div>
+                              <div className="flex flex-col items-center">
+                                <span className="text-muted-foreground text-xs">E</span>
+                                <span>{item.draws}</span>
+                              </div>
+                              <div className="flex flex-col items-center">
+                                <span className="text-muted-foreground text-xs">D</span>
+                                <span>{item.losses}</span>
+                              </div>
+                              <div className="flex flex-col items-center font-medium">
+                                <span className="text-muted-foreground text-xs">Pts</span>
+                                <span>{item.points}</span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-3 text-sm">
-                            <div className="flex flex-col items-center">
-                              <span className="text-xs text-muted-foreground">V</span>
-                              <span>{item.wins}</span>
-                            </div>
-                            <div className="flex flex-col items-center">
-                              <span className="text-xs text-muted-foreground">E</span>
-                              <span>{item.draws}</span>
-                            </div>
-                            <div className="flex flex-col items-center">
-                              <span className="text-xs text-muted-foreground">D</span>
-                              <span>{item.losses}</span>
-                            </div>
-                            <div className="flex flex-col items-center font-bold ml-2">
-                              <span className="text-xs text-muted-foreground">PTS</span>
-                              <span>{item.points}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </ScrollArea>
@@ -499,33 +540,54 @@ const TournamentDetails = () => {
             
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle>Estatísticas</CardTitle>
+                <CardTitle className="flex items-center mb-2">
+                  <BarChart3 className="h-5 w-5 mr-2" />
+                  Estatísticas
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center p-2 rounded-md bg-muted/20">
-                    <span>Total de Participantes</span>
-                    <Badge variant="outline" className="flex items-center gap-1">
-                      <Users className="h-3 w-3" />
-                      <span>{participants.length}</span>
-                    </Badge>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-muted/20 p-4 rounded-md">
+                      <div className="text-sm text-muted-foreground">Participantes</div>
+                      <div className="text-2xl font-bold mt-1 flex items-center">
+                        <Users className="h-5 w-5 mr-2 text-primary" />
+                        {tournament?.participants.length || 0}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-muted/20 p-4 rounded-md">
+                      <div className="text-sm text-muted-foreground">Partidas</div>
+                      <div className="text-2xl font-bold mt-1">
+                        {matches.length}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center p-2 rounded-md bg-muted/20">
-                    <span>Total de Partidas</span>
-                    <span className="font-medium">{matches.length}</span>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-muted/20 p-4 rounded-md">
+                      <div className="text-sm text-muted-foreground">Partidas Realizadas</div>
+                      <div className="text-2xl font-bold mt-1">
+                        {matches.filter(m => m.participant1Score !== undefined).length}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-muted/20 p-4 rounded-md">
+                      <div className="text-sm text-muted-foreground">Partidas Pendentes</div>
+                      <div className="text-2xl font-bold mt-1">
+                        {matches.filter(m => m.participant1Score === undefined).length}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center p-2 rounded-md bg-muted/20">
-                    <span>Partidas Realizadas</span>
-                    <span className="font-medium">
-                      {matches.filter(m => m.participant1Score !== undefined).length}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center p-2 rounded-md bg-muted/20">
-                    <span>Partidas Pendentes</span>
-                    <span className="font-medium">
-                      {matches.filter(m => m.participant1Score === undefined).length}
-                    </span>
-                  </div>
+                  
+                  {tournament?.status === TournamentStatus.FINISHED && (
+                    <div className="bg-primary/5 border border-primary/20 p-4 rounded-md">
+                      <div className="text-sm font-medium">Torneio Finalizado</div>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        Todas as partidas foram realizadas. O ranking final está disponível.
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -5,7 +5,7 @@ import { Badge } from "../components/ui/badge";
 import { Breadcrumb } from "../components/ui/breadcrumb";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
-import { Tournament, TournamentStatus, TournamentType, tournamentsCrud } from "../lib/db";
+import { Tournament, TournamentFormat, TournamentStatus, TournamentType, tournamentsCrud } from "../lib/db";
 
 const Tournaments = () => {
   const navigate = useNavigate();
@@ -31,11 +31,11 @@ const Tournaments = () => {
   const getStatusBadgeVariant = (status: TournamentStatus) => {
     switch (status) {
       case TournamentStatus.CREATED:
-        return "secondary";
+        return "created";
       case TournamentStatus.IN_PROGRESS:
-        return "default";
+        return "in-progress";
       case TournamentStatus.FINISHED:
-        return "outline";
+        return "finished";
       default:
         return "outline";
     }
@@ -85,13 +85,18 @@ const Tournaments = () => {
                     </div>
                   </CardHeader>
                   <CardContent className="pb-2">
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      <Badge variant="outline">
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      <Badge variant={tournament.type === TournamentType.PLAYERS ? "players" : "teams"}>
                         {tournament.type === TournamentType.PLAYERS ? "Jogadores" : "Times"}
                       </Badge>
                       <Badge variant={getStatusBadgeVariant(tournament.status)}>
                         {getStatusText(tournament.status)}
                       </Badge>
+                      {tournament.type === TournamentType.TEAMS && tournament.format && (
+                        <Badge variant={tournament.format === TournamentFormat.BEST_OF_3 ? "best-of-3" : "best-of-5"}>
+                          {tournament.format === TournamentFormat.BEST_OF_3 ? "Melhor de 3" : "Melhor de 5"}
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center text-sm text-muted-foreground">
                       <CalendarIcon className="mr-1 h-3 w-3" />
