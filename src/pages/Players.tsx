@@ -1,8 +1,10 @@
+import { CalendarIcon, Edit, Trash, User } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Player, playersCrud } from "../lib/db";
 
 const Players = () => {
@@ -80,17 +82,19 @@ const Players = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <h1 className="text-3xl font-bold">Gerenciar Jogadores</h1>
       </div>
 
-      <div className="flex gap-4">
-        <Input
-          placeholder="Nome do jogador"
-          value={newPlayerName}
-          onChange={(e) => setNewPlayerName(e.target.value)}
-          className="max-w-sm"
-        />
+      <div className="flex gap-4 flex-wrap">
+        <div className="flex-1 min-w-[250px]">
+          <Input
+            placeholder="Nome do jogador"
+            value={newPlayerName}
+            onChange={(e) => setNewPlayerName(e.target.value)}
+            className="w-full"
+          />
+        </div>
         <Button onClick={handleAddPlayer} disabled={!newPlayerName.trim()}>
           Adicionar Jogador
         </Button>
@@ -99,52 +103,50 @@ const Players = () => {
       {isLoading ? (
         <div className="text-center py-4">Carregando jogadores...</div>
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>Data de Criação</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {players.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center">
-                    Nenhum jogador cadastrado
-                  </TableCell>
-                </TableRow>
-              ) : (
-                players.map((player) => (
-                  <TableRow key={player.id}>
-                    <TableCell>{player.id}</TableCell>
-                    <TableCell>{player.name}</TableCell>
-                    <TableCell>
-                      {new Date(player.createdAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openEditDialog(player)}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => openDeleteDialog(player)}
-                      >
-                        Excluir
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {players.length === 0 ? (
+            <div className="col-span-full text-center py-8 bg-muted/20 rounded-lg">
+              <p className="text-muted-foreground">Nenhum jogador cadastrado</p>
+            </div>
+          ) : (
+            players.map((player) => (
+              <Card key={player.id} className="overflow-hidden">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex justify-between items-center">
+                    <span className="truncate">{player.name}</span>
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      <span>#{player.id}</span>
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pb-2">
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <CalendarIcon className="mr-1 h-3 w-3" />
+                    <span>Criado em {new Date(player.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-end gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openEditDialog(player)}
+                  >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Editar
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => openDeleteDialog(player)}
+                  >
+                    <Trash className="h-4 w-4 mr-1" />
+                    Excluir
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))
+          )}
         </div>
       )}
 

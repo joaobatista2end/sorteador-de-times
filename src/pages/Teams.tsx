@@ -1,10 +1,11 @@
+import { CalendarIcon, Edit, Trash, Users } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Player, Team, playersCrud, teamsCrud } from "../lib/db";
 
 const Teams = () => {
@@ -199,17 +200,19 @@ const Teams = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <h1 className="text-3xl font-bold">Gerenciar Times</h1>
       </div>
 
-      <div className="flex gap-4">
-        <Input
-          placeholder="Nome do time"
-          value={newTeamName}
-          onChange={(e) => setNewTeamName(e.target.value)}
-          className="max-w-sm"
-        />
+      <div className="flex gap-4 flex-wrap">
+        <div className="flex-1 min-w-[250px]">
+          <Input
+            placeholder="Nome do time"
+            value={newTeamName}
+            onChange={(e) => setNewTeamName(e.target.value)}
+            className="w-full"
+          />
+        </div>
         <Button onClick={handleAddTeam} disabled={!newTeamName.trim()}>
           Adicionar Time
         </Button>
@@ -218,61 +221,58 @@ const Teams = () => {
       {isLoading ? (
         <div className="text-center py-4">Carregando times...</div>
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>Jogadores</TableHead>
-                <TableHead>Data de Criação</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {teams.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center">
-                    Nenhum time cadastrado
-                  </TableCell>
-                </TableRow>
-              ) : (
-                teams.map((team) => (
-                  <TableRow key={team.id}>
-                    <TableCell>{team.id}</TableCell>
-                    <TableCell>{team.name}</TableCell>
-                    <TableCell>{team.players.length} jogadores</TableCell>
-                    <TableCell>
-                      {new Date(team.createdAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openAddPlayerDialog(team)}
-                      >
-                        Jogadores
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openEditDialog(team)}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => openDeleteDialog(team)}
-                      >
-                        Excluir
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {teams.length === 0 ? (
+            <div className="col-span-full text-center py-8 bg-muted/20 rounded-lg">
+              <p className="text-muted-foreground">Nenhum time cadastrado</p>
+            </div>
+          ) : (
+            teams.map((team) => (
+              <Card key={team.id} className="overflow-hidden">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex justify-between items-center">
+                    <span className="truncate">{team.name}</span>
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      <span>{team.players.length}</span>
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pb-2">
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <CalendarIcon className="mr-1 h-3 w-3" />
+                    <span>Criado em {new Date(team.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-end gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openAddPlayerDialog(team)}
+                  >
+                    <Users className="h-4 w-4 mr-1" />
+                    Jogadores
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openEditDialog(team)}
+                  >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Editar
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => openDeleteDialog(team)}
+                  >
+                    <Trash className="h-4 w-4 mr-1" />
+                    Excluir
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))
+          )}
         </div>
       )}
 
@@ -395,30 +395,23 @@ const Teams = () => {
                     Este time não possui jogadores
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Nome</TableHead>
-                        <TableHead></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {teamPlayers.map((player) => (
-                        <TableRow key={player.id}>
-                          <TableCell>{player.name}</TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleRemovePlayerFromTeam(player.id!)}
-                            >
-                              Remover
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <div className="space-y-2">
+                    {teamPlayers.map((player) => (
+                      <div 
+                        key={player.id} 
+                        className="flex justify-between items-center p-2 bg-muted/20 rounded-md"
+                      >
+                        <span>{player.name}</span>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleRemovePlayerFromTeam(player.id!)}
+                        >
+                          Remover
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>

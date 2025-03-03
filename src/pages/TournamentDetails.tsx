@@ -1,10 +1,19 @@
+import { ChevronRight, Edit, Plus, Trash, Trophy, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
+import {
+    ResponsiveDialog,
+    ResponsiveDialogContent,
+    ResponsiveDialogDescription,
+    ResponsiveDialogFooter,
+    ResponsiveDialogHeader,
+    ResponsiveDialogTitle,
+} from "../components/ui/responsive-dialog";
+import { ScrollArea } from "../components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Match, Player, Team, Tournament, TournamentStatus, TournamentType, playersCrud, teamsCrud, tournamentsCrud } from "../lib/db";
 
@@ -309,27 +318,36 @@ const TournamentDetails = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold">{tournament.name}</h1>
-          <p className="text-muted-foreground">
-            Torneio de {tournament.type === TournamentType.PLAYERS ? "Jogadores" : "Times"} • 
-            {tournament.status === TournamentStatus.CREATED ? " Criado" : 
-             tournament.status === TournamentStatus.IN_PROGRESS ? " Em Andamento" : " Finalizado"}
-          </p>
+          <h1 className="text-2xl sm:text-3xl font-bold">{tournament.name}</h1>
+          <div className="flex flex-wrap gap-2 mt-1">
+            <Badge variant="outline">
+              {tournament.type === TournamentType.PLAYERS ? "Jogadores" : "Times"}
+            </Badge>
+            <Badge variant={tournament.status === TournamentStatus.CREATED 
+              ? "secondary" 
+              : tournament.status === TournamentStatus.IN_PROGRESS 
+                ? "default" 
+                : "outline"}>
+              {tournament.status === TournamentStatus.CREATED ? "Criado" : 
+               tournament.status === TournamentStatus.IN_PROGRESS ? "Em Andamento" : "Finalizado"}
+            </Badge>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline"
-            onClick={() => setIsDeleteDialogOpen(true)}
-          >
-            Excluir Torneio
-          </Button>
-        </div>
+        <Button 
+          variant="outline"
+          size="sm"
+          onClick={() => setIsDeleteDialogOpen(true)}
+          className="self-end sm:self-auto"
+        >
+          <Trash className="h-4 w-4 mr-1" />
+          Excluir Torneio
+        </Button>
       </div>
 
-      <Tabs defaultValue="dashboard">
-        <TabsList>
+      <Tabs defaultValue="dashboard" className="w-full">
+        <TabsList className="w-full grid grid-cols-3">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="matches">Partidas</TabsTrigger>
           <TabsTrigger value="participants">Participantes</TabsTrigger>
@@ -339,67 +357,82 @@ const TournamentDetails = () => {
         <TabsContent value="dashboard" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Ranking</CardTitle>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center">
+                  <Trophy className="h-5 w-5 mr-2" />
+                  Ranking
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Pos.</TableHead>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>V</TableHead>
-                      <TableHead>E</TableHead>
-                      <TableHead>D</TableHead>
-                      <TableHead>Pts</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {ranking.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center">
-                          Nenhum resultado registrado
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      ranking.map((item, index) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{index + 1}</TableCell>
-                          <TableCell className="font-medium">{item.name}</TableCell>
-                          <TableCell>{item.wins}</TableCell>
-                          <TableCell>{item.draws}</TableCell>
-                          <TableCell>{item.losses}</TableCell>
-                          <TableCell className="font-bold">{item.points}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+                <ScrollArea className="h-[300px] pr-4">
+                  {ranking.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Nenhum resultado registrado
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {ranking.map((item, index) => (
+                        <div 
+                          key={item.id} 
+                          className="flex items-center justify-between p-2 rounded-md bg-muted/20"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Badge variant={index < 3 ? "default" : "outline"} className="w-6 h-6 flex items-center justify-center p-0">
+                              {index + 1}
+                            </Badge>
+                            <span className="font-medium">{item.name}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-sm">
+                            <div className="flex flex-col items-center">
+                              <span className="text-xs text-muted-foreground">V</span>
+                              <span>{item.wins}</span>
+                            </div>
+                            <div className="flex flex-col items-center">
+                              <span className="text-xs text-muted-foreground">E</span>
+                              <span>{item.draws}</span>
+                            </div>
+                            <div className="flex flex-col items-center">
+                              <span className="text-xs text-muted-foreground">D</span>
+                              <span>{item.losses}</span>
+                            </div>
+                            <div className="flex flex-col items-center font-bold ml-2">
+                              <span className="text-xs text-muted-foreground">PTS</span>
+                              <span>{item.points}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
               </CardContent>
             </Card>
             
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-2">
                 <CardTitle>Estatísticas</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Total de Participantes:</span>
-                    <span className="font-medium">{participants.length}</span>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center p-2 rounded-md bg-muted/20">
+                    <span>Total de Participantes</span>
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      <span>{participants.length}</span>
+                    </Badge>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Total de Partidas:</span>
+                  <div className="flex justify-between items-center p-2 rounded-md bg-muted/20">
+                    <span>Total de Partidas</span>
                     <span className="font-medium">{matches.length}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Partidas Realizadas:</span>
+                  <div className="flex justify-between items-center p-2 rounded-md bg-muted/20">
+                    <span>Partidas Realizadas</span>
                     <span className="font-medium">
                       {matches.filter(m => m.participant1Score !== undefined).length}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Partidas Pendentes:</span>
+                  <div className="flex justify-between items-center p-2 rounded-md bg-muted/20">
+                    <span>Partidas Pendentes</span>
                     <span className="font-medium">
                       {matches.filter(m => m.participant1Score === undefined).length}
                     </span>
@@ -415,54 +448,73 @@ const TournamentDetails = () => {
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Partidas</h2>
             {tournament.status === TournamentStatus.CREATED && (
-              <Button onClick={generateMatches}>
+              <Button onClick={generateMatches} size="sm">
+                <Plus className="h-4 w-4 mr-1" />
                 Gerar Partidas
               </Button>
             )}
           </div>
           
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Participante 1</TableHead>
-                  <TableHead>Participante 2</TableHead>
-                  <TableHead>Resultado</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {matches.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center">
-                      Nenhuma partida gerada
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  matches.map((match) => (
-                    <TableRow key={match.id}>
-                      <TableCell>{getParticipantName(match.participant1Id)}</TableCell>
-                      <TableCell>{getParticipantName(match.participant2Id)}</TableCell>
-                      <TableCell>
-                        {match.participant1Score !== undefined && match.participant2Score !== undefined
-                          ? `${match.participant1Score} x ${match.participant2Score}`
-                          : "Não realizada"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openMatchDialog(match)}
-                        >
-                          {match.participant1Score !== undefined ? "Editar" : "Registrar"}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          {matches.length === 0 ? (
+            <div className="text-center py-8 bg-muted/20 rounded-lg">
+              <p className="text-muted-foreground">Nenhuma partida gerada</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3">
+              {matches.map((match) => (
+                <Card key={match.id} className="overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+                      <div className="flex items-center justify-between w-full sm:w-auto gap-3">
+                        <div className="text-center sm:text-right flex-1 sm:flex-none">
+                          <p className="font-medium truncate max-w-[120px] sm:max-w-none">
+                            {getParticipantName(match.participant1Id)}
+                          </p>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/30">
+                          {match.participant1Score !== undefined && match.participant2Score !== undefined ? (
+                            <>
+                              <span className="font-bold">{match.participant1Score}</span>
+                              <span className="text-muted-foreground">x</span>
+                              <span className="font-bold">{match.participant2Score}</span>
+                            </>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Não realizada</span>
+                          )}
+                        </div>
+                        
+                        <div className="text-center sm:text-left flex-1 sm:flex-none">
+                          <p className="font-medium truncate max-w-[120px] sm:max-w-none">
+                            {getParticipantName(match.participant2Id)}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openMatchDialog(match)}
+                        className="w-full sm:w-auto"
+                      >
+                        {match.participant1Score !== undefined ? (
+                          <>
+                            <Edit className="h-4 w-4 mr-1" />
+                            Editar
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 mr-1" />
+                            Registrar
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
         
         {/* Participants Tab */}
@@ -470,79 +522,74 @@ const TournamentDetails = () => {
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Participantes</h2>
             {tournament.status === TournamentStatus.CREATED && (
-              <Button onClick={() => setIsAddParticipantDialogOpen(true)}>
-                Adicionar Participante
+              <Button onClick={() => setIsAddParticipantDialogOpen(true)} size="sm">
+                <Plus className="h-4 w-4 mr-1" />
+                Adicionar
               </Button>
             )}
           </div>
           
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  {tournament.type === TournamentType.TEAMS && (
-                    <TableHead>Jogadores</TableHead>
-                  )}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {participants.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={tournament.type === TournamentType.TEAMS ? 2 : 1} className="text-center">
-                      Nenhum participante
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  participants.map((participant) => (
-                    <TableRow key={participant.id}>
-                      <TableCell className="font-medium">{participant.name}</TableCell>
-                      {tournament.type === TournamentType.TEAMS && (
-                        <TableCell>
-                          {(participant as Team).players?.length || 0} jogadores
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          {participants.length === 0 ? (
+            <div className="text-center py-8 bg-muted/20 rounded-lg">
+              <p className="text-muted-foreground">Nenhum participante</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {participants.map((participant) => (
+                <Card key={participant.id} className="overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium">{participant.name}</p>
+                        {tournament.type === TournamentType.TEAMS && (
+                          <p className="text-sm text-muted-foreground flex items-center mt-1">
+                            <Users className="h-3 w-3 mr-1" />
+                            {(participant as Team).players?.length || 0} jogadores
+                          </p>
+                        )}
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
       {/* Delete Tournament Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmar Exclusão</DialogTitle>
-            <DialogDescription>
+      <ResponsiveDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <ResponsiveDialogContent className="sm:max-w-md">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Confirmar Exclusão</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
               Tem certeza que deseja excluir o torneio "{tournament.name}"? Esta ação não pode ser desfeita.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
+          <ResponsiveDialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setIsDeleteDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleDeleteTournament}>
+            <Button variant="destructive" className="w-full sm:w-auto" onClick={handleDeleteTournament}>
               Excluir
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       {/* Match Result Dialog */}
-      <Dialog open={isMatchDialogOpen} onOpenChange={setIsMatchDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Registrar Resultado</DialogTitle>
-            <DialogDescription>
+      <ResponsiveDialog open={isMatchDialogOpen} onOpenChange={setIsMatchDialogOpen}>
+        <ResponsiveDialogContent className="sm:max-w-md">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Registrar Resultado</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
               Informe o resultado da partida entre {currentMatch && getParticipantName(currentMatch.participant1Id)} e {currentMatch && getParticipantName(currentMatch.participant2Id)}.
-            </DialogDescription>
-          </DialogHeader>
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
           <div className="grid grid-cols-3 items-center gap-4 py-4">
             <div className="text-center">
-              <p className="mb-2">{currentMatch && getParticipantName(currentMatch.participant1Id)}</p>
+              <p className="mb-2 text-sm truncate">{currentMatch && getParticipantName(currentMatch.participant1Id)}</p>
               <Input
                 type="number"
                 min="0"
@@ -555,7 +602,7 @@ const TournamentDetails = () => {
               X
             </div>
             <div className="text-center">
-              <p className="mb-2">{currentMatch && getParticipantName(currentMatch.participant2Id)}</p>
+              <p className="mb-2 text-sm truncate">{currentMatch && getParticipantName(currentMatch.participant2Id)}</p>
               <Input
                 type="number"
                 min="0"
@@ -565,78 +612,71 @@ const TournamentDetails = () => {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsMatchDialogOpen(false)}>
+          <ResponsiveDialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setIsMatchDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSaveMatchResult}>
+            <Button className="w-full sm:w-auto" onClick={handleSaveMatchResult}>
               Salvar Resultado
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       {/* Add Participant Dialog */}
-      <Dialog open={isAddParticipantDialogOpen} onOpenChange={setIsAddParticipantDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Adicionar Participante</DialogTitle>
-            <DialogDescription>
+      <ResponsiveDialog open={isAddParticipantDialogOpen} onOpenChange={setIsAddParticipantDialogOpen}>
+        <ResponsiveDialogContent className="sm:max-w-md">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Adicionar Participante</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
               Selecione um {tournament.type === TournamentType.PLAYERS ? "jogador" : "time"} para adicionar ao torneio.
-            </DialogDescription>
-          </DialogHeader>
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
           <div className="py-4">
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12"></TableHead>
-                    <TableHead>Nome</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {availableParticipants.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={2} className="text-center">
-                        Nenhum {tournament.type === TournamentType.PLAYERS ? "jogador" : "time"} disponível
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    availableParticipants.map((participant) => (
-                      <TableRow
-                        key={participant.id}
-                        className={selectedParticipantId === participant.id?.toString() ? "bg-muted" : ""}
-                        onClick={() => setSelectedParticipantId(participant.id?.toString() || "")}
-                      >
-                        <TableCell>
-                          <input
-                            type="radio"
-                            checked={selectedParticipantId === participant.id?.toString()}
-                            onChange={() => {}}
-                            className="h-4 w-4"
-                          />
-                        </TableCell>
-                        <TableCell>{participant.name}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+            {availableParticipants.length === 0 ? (
+              <div className="text-center py-4 bg-muted/20 rounded-lg">
+                <p className="text-muted-foreground">
+                  Nenhum {tournament.type === TournamentType.PLAYERS ? "jogador" : "time"} disponível
+                </p>
+              </div>
+            ) : (
+              <ScrollArea className="h-[300px] pr-4">
+                <div className="space-y-2">
+                  {availableParticipants.map((participant) => (
+                    <div
+                      key={participant.id}
+                      className={`flex items-center gap-3 p-3 rounded-md cursor-pointer ${
+                        selectedParticipantId === participant.id?.toString() ? "bg-muted" : "bg-muted/20"
+                      }`}
+                      onClick={() => setSelectedParticipantId(participant.id?.toString() || "")}
+                    >
+                      <input
+                        type="radio"
+                        checked={selectedParticipantId === participant.id?.toString()}
+                        onChange={() => {}}
+                        className="h-4 w-4"
+                      />
+                      <span className="font-medium">{participant.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddParticipantDialogOpen(false)}>
+          <ResponsiveDialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setIsAddParticipantDialogOpen(false)}>
               Cancelar
             </Button>
             <Button 
+              className="w-full sm:w-auto"
               onClick={handleAddParticipant}
               disabled={!selectedParticipantId}
             >
               Adicionar
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </div>
   );
 };

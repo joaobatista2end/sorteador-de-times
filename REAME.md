@@ -38,3 +38,14 @@ Gerenciamento de Torneios:
 - Preciso que realize o gerenciamento de rotas
 - Utilize typescript para tipar as instancias necessárias
 - Utilize enums para caso precise representar alguma opção
+
+
+## Melhorias
+
+- Preciso que crie a possibilidade de um tema escuro e um tema claro.
+No tema escuro preciso que a cor primária seja dourado(gradiente dourado) e azul marinho (gradiente azul marinho com azul mais escuro)
+
+- Preciso que adapte a interface para dispositívos móveis
+
+- Preciso de uma interface mais moderna, sem tantas tabelas. Quando possível, utilize alternativas mais modernas para a exibição dos dados
+a não ser tabelas.
