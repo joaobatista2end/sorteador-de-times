@@ -114,16 +114,47 @@ export const teamsCrud = {
   addPlayerToTeam: async (teamId: number, playerId: number) => {
     const team = await db.teams.get(teamId);
     if (team) {
+      // Verificar se o jogador já está no time
+      if (team.players.includes(playerId)) {
+        console.log("Jogador já está no time");
+        return true; // Retorna true porque o estado final é o desejado
+      }
+      
+      // Verificar se o jogador existe
+      const player = await db.players.get(playerId);
+      if (!player) {
+        console.error("Jogador não encontrado");
+        return false;
+      }
+      
+      // Adicionar jogador ao time
       const players = [...team.players, playerId];
-      return await db.teams.update(teamId, { players, updatedAt: new Date() });
+      const result = await db.teams.update(teamId, { 
+        players, 
+        updatedAt: new Date() 
+      });
+      
+      return result > 0; // Retorna true se a atualização foi bem-sucedida
     }
     return false;
   },
   removePlayerFromTeam: async (teamId: number, playerId: number) => {
     const team = await db.teams.get(teamId);
     if (team) {
+      // Verificar se o jogador está no time
+      if (!team.players.includes(playerId)) {
+        console.log("Jogador não está no time");
+        return true; // Retorna true porque o estado final é o desejado
+      }
+      
+      // Remover jogador do time
       const players = team.players.filter(id => id !== playerId);
-      return await db.teams.update(teamId, { players, updatedAt: new Date() });
+      const result = await db.teams.update(teamId, { 
+        players, 
+        updatedAt: new Date() 
+      });
+      
+      return result > 0; // Retorna true se a atualização foi bem-sucedida
     }
     return false;
   },
@@ -143,41 +174,73 @@ export const tournamentsCrud = {
   },
   update: async (id: number, tournament: Partial<Omit<Tournament, 'id' | 'createdAt' | 'updatedAt'>>) => {
     const now = new Date();
-    return await db.tournaments.update(id, {
-      ...tournament,
-      updatedAt: now
-    });
+    try {
+      const result = await db.tournaments.update(id, {
+        ...tournament,
+        updatedAt: now
+      });
+      return result > 0; // Retorna true se a atualização foi bem-sucedida
+    } catch (error) {
+      console.error("Erro ao atualizar torneio:", error);
+      return false;
+    }
   },
   updateMatchResult: async (tournamentId: number, matchId: number, participant1Score: number, participant2Score: number) => {
-    const tournament = await db.tournaments.get(tournamentId);
-    
-    if (tournament) {
-      const updatedMatches = tournament.matches.map(match => {
-        if (match.id === matchId) {
-          const winner = participant1Score > participant2Score 
-            ? match.participant1Id 
-            : participant2Score > participant1Score 
-              ? match.participant2Id 
-              : undefined;
-          
-          return {
-            ...match,
-            participant1Score,
-            participant2Score,
-            winner,
-            updatedAt: new Date()
-          };
-        }
-        return match;
-      });
+    try {
+      const tournament = await db.tournaments.get(tournamentId);
       
-      return await db.tournaments.update(tournamentId, {
+      if (!tournament) {
+        console.error("Torneio não encontrado");
+        return false;
+      }
+      
+      // Encontrar a partida a ser atualizada
+      const matchIndex = tournament.matches.findIndex(m => m.id === matchId);
+      
+      if (matchIndex === -1) {
+        console.error("Partida não encontrada no torneio");
+        return false;
+      }
+      
+      // Criar uma cópia das partidas para evitar problemas de referência
+      const updatedMatches = [...tournament.matches];
+      
+      // Determinar o vencedor
+      const winner = participant1Score > participant2Score 
+        ? updatedMatches[matchIndex].participant1Id 
+        : participant2Score > participant1Score 
+          ? updatedMatches[matchIndex].participant2Id 
+          : undefined;
+      
+      // Atualizar a partida
+      updatedMatches[matchIndex] = {
+        ...updatedMatches[matchIndex],
+        participant1Score,
+        participant2Score,
+        winner,
+        updatedAt: new Date()
+      };
+      
+      // Verificar se todas as partidas foram realizadas
+      const allMatchesCompleted = updatedMatches.every(match => 
+        match.participant1Score !== undefined && match.participant2Score !== undefined
+      );
+      
+      // Atualizar o status do torneio se todas as partidas foram realizadas
+      const status = allMatchesCompleted ? TournamentStatus.FINISHED : tournament.status;
+      
+      // Atualizar o torneio
+      const result = await db.tournaments.update(tournamentId, {
         matches: updatedMatches,
+        status,
         updatedAt: new Date()
       });
+      
+      return result > 0; // Retorna true se a atualização foi bem-sucedida
+    } catch (error) {
+      console.error("Erro ao atualizar resultado da partida:", error);
+      return false;
     }
-    
-    return false;
   },
   remove: async (id: number) => await db.tournaments.delete(id)
 };

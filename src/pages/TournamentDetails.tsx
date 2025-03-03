@@ -230,26 +230,48 @@ const TournamentDetails = () => {
       
       for (let i = 0; i < tournament.participants.length; i++) {
         for (let j = i + 1; j < tournament.participants.length; j++) {
-          newMatches.push({
-            id: Date.now() + Math.floor(Math.random() * 1000), // Temporary ID
-            tournamentId: tournament.id!,
-            participant1Id: tournament.participants[i],
-            participant2Id: tournament.participants[j],
-            createdAt: now,
-            updatedAt: now
-          });
+          // Verificar se a partida já existe
+          const matchExists = tournament.matches.some(
+            match => 
+              (match.participant1Id === tournament.participants[i] && 
+               match.participant2Id === tournament.participants[j]) ||
+              (match.participant1Id === tournament.participants[j] && 
+               match.participant2Id === tournament.participants[i])
+          );
+          
+          if (!matchExists) {
+            newMatches.push({
+              id: Date.now() + Math.floor(Math.random() * 1000) + i + j, // Temporary ID
+              tournamentId: tournament.id!,
+              participant1Id: tournament.participants[i],
+              participant2Id: tournament.participants[j],
+              createdAt: now,
+              updatedAt: now
+            });
+          }
         }
       }
       
+      if (newMatches.length === 0) {
+        alert("Todas as partidas possíveis já foram geradas");
+        return;
+      }
+      
       // Update tournament with new matches and status
-      await tournamentsCrud.update(tournament.id!, {
+      const result = await tournamentsCrud.update(tournament.id!, {
         matches: [...tournament.matches, ...newMatches],
         status: TournamentStatus.IN_PROGRESS
       });
       
-      loadTournament();
+      if (result) {
+        alert(`${newMatches.length} partidas geradas com sucesso!`);
+        loadTournament();
+      } else {
+        alert("Erro ao gerar partidas");
+      }
     } catch (error) {
       console.error("Erro ao gerar partidas:", error);
+      alert("Erro ao gerar partidas");
     }
   };
 

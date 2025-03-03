@@ -95,11 +95,27 @@ const Teams = () => {
     }
   };
 
-  const openAddPlayerDialog = (team: Team) => {
-    setSelectedTeam(team);
-    loadTeamPlayers(team);
-    setSelectedPlayerId("");
-    setIsAddPlayerDialogOpen(true);
+  const openAddPlayerDialog = async (team: Team) => {
+    try {
+      // Obter os dados mais recentes do time do banco de dados
+      const freshTeam = await teamsCrud.getById(team.id!);
+      if (freshTeam) {
+        setSelectedTeam(freshTeam);
+        loadTeamPlayers(freshTeam);
+      } else {
+        setSelectedTeam({...team}); // Fallback para o time passado como parâmetro
+        loadTeamPlayers(team);
+      }
+      setSelectedPlayerId("");
+      setIsAddPlayerDialogOpen(true);
+    } catch (error) {
+      console.error("Erro ao abrir diálogo de jogadores:", error);
+      // Fallback para o time passado como parâmetro
+      setSelectedTeam({...team});
+      loadTeamPlayers(team);
+      setSelectedPlayerId("");
+      setIsAddPlayerDialogOpen(true);
+    }
   };
 
   const loadTeamPlayers = async (team: Team) => {
@@ -121,10 +137,31 @@ const Teams = () => {
     if (!selectedTeam || !selectedPlayerId) return;
     
     try {
-      await teamsCrud.addPlayerToTeam(selectedTeam.id!, parseInt(selectedPlayerId));
-      loadTeams();
-      loadTeamPlayers(selectedTeam);
-      setSelectedPlayerId("");
+      const playerId = parseInt(selectedPlayerId);
+      
+      // Verificar se o jogador já está no time
+      if (selectedTeam.players.includes(playerId)) {
+        console.log("Jogador já está no time");
+        return;
+      }
+      
+      // Adicionar jogador ao time
+      const success = await teamsCrud.addPlayerToTeam(selectedTeam.id!, playerId);
+      
+      if (success) {
+        // Recarregar os dados do time e dos jogadores
+        const updatedTeam = await teamsCrud.getById(selectedTeam.id!);
+        if (updatedTeam) {
+          setSelectedTeam(updatedTeam);
+          loadTeamPlayers(updatedTeam);
+        }
+        setSelectedPlayerId("");
+        
+        // Recarregar a lista de times para atualizar a contagem de jogadores na tabela principal
+        loadTeams();
+      } else {
+        console.error("Falha ao adicionar jogador ao time");
+      }
     } catch (error) {
       console.error("Erro ao adicionar jogador ao time:", error);
     }
@@ -134,16 +171,30 @@ const Teams = () => {
     if (!selectedTeam) return;
     
     try {
-      await teamsCrud.removePlayerFromTeam(selectedTeam.id!, playerId);
-      loadTeams();
-      loadTeamPlayers(selectedTeam);
+      // Remover jogador do time
+      const success = await teamsCrud.removePlayerFromTeam(selectedTeam.id!, playerId);
+      
+      if (success) {
+        // Recarregar os dados do time e dos jogadores
+        const updatedTeam = await teamsCrud.getById(selectedTeam.id!);
+        if (updatedTeam) {
+          setSelectedTeam(updatedTeam);
+          loadTeamPlayers(updatedTeam);
+        }
+        
+        // Recarregar a lista de times para atualizar a contagem de jogadores na tabela principal
+        loadTeams();
+      } else {
+        console.error("Falha ao remover jogador do time");
+      }
     } catch (error) {
       console.error("Erro ao remover jogador do time:", error);
     }
   };
 
+  // Calcular jogadores disponíveis (que não estão no time selecionado)
   const availablePlayers = players.filter((player) => 
-    !selectedTeam?.players.includes(player.id!)
+    selectedTeam ? !selectedTeam.players.includes(player.id!) : true
   );
 
   return (
@@ -277,7 +328,12 @@ const Teams = () => {
         open={isAddPlayerDialogOpen} 
         onOpenChange={(open) => {
           setIsAddPlayerDialogOpen(open);
-          if (!open) setSelectedTeam(null);
+          if (!open) {
+            setSelectedTeam(null);
+            setTeamPlayers([]);
+            // Recarregar a lista de times ao fechar o diálogo
+            loadTeams();
+          }
         }}
       >
         <DialogContent className="max-w-3xl">
@@ -371,7 +427,11 @@ const Teams = () => {
           <DialogFooter>
             <Button 
               variant="outline" 
-              onClick={() => setIsAddPlayerDialogOpen(false)}
+              onClick={() => {
+                // Recarregar a lista de times antes de fechar o diálogo
+                loadTeams();
+                setIsAddPlayerDialogOpen(false);
+              }}
             >
               Fechar
             </Button>
