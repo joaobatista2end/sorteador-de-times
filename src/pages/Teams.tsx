@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Button } from "../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Player, Team, playersCrud, teamsCrud } from "../lib/db";
 
@@ -93,6 +95,57 @@ const Teams = () => {
     }
   };
 
+  const openAddPlayerDialog = (team: Team) => {
+    setSelectedTeam(team);
+    loadTeamPlayers(team);
+    setSelectedPlayerId("");
+    setIsAddPlayerDialogOpen(true);
+  };
+
+  const loadTeamPlayers = async (team: Team) => {
+    try {
+      const teamPlayersData = await Promise.all(
+        team.players.map(async (playerId) => {
+          return await playersCrud.getById(playerId as number);
+        })
+      );
+      
+      // Filter out undefined values (in case a player doesn't exist anymore)
+      setTeamPlayers(teamPlayersData.filter(Boolean) as Player[]);
+    } catch (error) {
+      console.error("Erro ao carregar jogadores do time:", error);
+    }
+  };
+
+  const handleAddPlayerToTeam = async () => {
+    if (!selectedTeam || !selectedPlayerId) return;
+    
+    try {
+      await teamsCrud.addPlayerToTeam(selectedTeam.id!, parseInt(selectedPlayerId));
+      loadTeams();
+      loadTeamPlayers(selectedTeam);
+      setSelectedPlayerId("");
+    } catch (error) {
+      console.error("Erro ao adicionar jogador ao time:", error);
+    }
+  };
+
+  const handleRemovePlayerFromTeam = async (playerId: number) => {
+    if (!selectedTeam) return;
+    
+    try {
+      await teamsCrud.removePlayerFromTeam(selectedTeam.id!, playerId);
+      loadTeams();
+      loadTeamPlayers(selectedTeam);
+    } catch (error) {
+      console.error("Erro ao remover jogador do time:", error);
+    }
+  };
+
+  const availablePlayers = players.filter((player) => 
+    !selectedTeam?.players.includes(player.id!)
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -145,7 +198,7 @@ const Teams = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => {}}
+                        onClick={() => openAddPlayerDialog(team)}
                       >
                         Jogadores
                       </Button>
@@ -214,6 +267,113 @@ const Teams = () => {
             </Button>
             <Button variant="destructive" onClick={handleDeleteTeam}>
               Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Player to Team Dialog */}
+      <Dialog 
+        open={isAddPlayerDialogOpen} 
+        onOpenChange={(open) => {
+          setIsAddPlayerDialogOpen(open);
+          if (!open) setSelectedTeam(null);
+        }}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Gerenciar Jogadores do Time: {selectedTeam?.name}</DialogTitle>
+            <DialogDescription>
+              Adicione ou remova jogadores deste time.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Adicionar Jogador</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Select 
+                    value={selectedPlayerId} 
+                    onValueChange={setSelectedPlayerId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um jogador" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availablePlayers.length === 0 ? (
+                        <SelectItem value="empty" disabled>
+                          Nenhum jogador disponível
+                        </SelectItem>
+                      ) : (
+                        availablePlayers.map((player) => (
+                          <SelectItem 
+                            key={player.id} 
+                            value={player.id!.toString()}
+                          >
+                            {player.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <Button 
+                    onClick={handleAddPlayerToTeam}
+                    disabled={!selectedPlayerId}
+                  >
+                    Adicionar
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Jogadores do Time</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {teamPlayers.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-2">
+                    Este time não possui jogadores
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {teamPlayers.map((player) => (
+                        <TableRow key={player.id}>
+                          <TableCell>{player.name}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleRemovePlayerFromTeam(player.id!)}
+                            >
+                              Remover
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsAddPlayerDialogOpen(false)}
+            >
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>

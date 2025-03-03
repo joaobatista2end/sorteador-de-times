@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
@@ -6,7 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../compone
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../components/ui/form";
 import { Input } from "../components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
-import { Tournament, TournamentStatus, TournamentType, playersCrud, teamsCrud, tournamentsCrud } from "../lib/db";
+import { Player, Team, Tournament, TournamentStatus, TournamentType, playersCrud, teamsCrud, tournamentsCrud } from "../lib/db";
 
 type TournamentForm = {
   name: string;
@@ -17,8 +17,8 @@ type TournamentForm = {
 const CreateTournament = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  const [players, setPlayers] = useState<any[]>([]);
-  const [teams, setTeams] = useState<any[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [selectedType, setSelectedType] = useState<TournamentType | null>(null);
   const [selectedParticipants, setSelectedParticipants] = useState<number[]>([]);
   
@@ -29,6 +29,22 @@ const CreateTournament = () => {
       participants: []
     }
   });
+
+  useEffect(() => {
+    // Load players and teams when component mounts
+    const loadData = async () => {
+      try {
+        const allPlayers = await playersCrud.getAll();
+        const allTeams = await teamsCrud.getAll();
+        setPlayers(allPlayers);
+        setTeams(allTeams);
+      } catch (error) {
+        console.error("Erro ao carregar dados:", error);
+      }
+    };
+    
+    loadData();
+  }, []);
 
   const onSubmit = async (data: TournamentForm) => {
     try {
@@ -60,7 +76,6 @@ const CreateTournament = () => {
         alert("Selecione um tipo de torneio");
         return;
       }
-      loadParticipants();
       setStep(3);
     } else if (step === 3) {
       if (selectedParticipants.length < 2) {
@@ -74,24 +89,6 @@ const CreateTournament = () => {
   const prevStep = () => {
     if (step > 1) {
       setStep(step - 1);
-    }
-  };
-
-  const loadParticipants = async () => {
-    if (selectedType === TournamentType.PLAYERS) {
-      try {
-        const allPlayers = await playersCrud.getAll();
-        setPlayers(allPlayers);
-      } catch (error) {
-        console.error("Erro ao carregar jogadores:", error);
-      }
-    } else {
-      try {
-        const allTeams = await teamsCrud.getAll();
-        setTeams(allTeams);
-      } catch (error) {
-        console.error("Erro ao carregar times:", error);
-      }
     }
   };
 
@@ -223,13 +220,13 @@ const CreateTournament = () => {
                             players.map((player) => (
                               <TableRow
                                 key={player.id}
-                                className={selectedParticipants.includes(player.id) ? "bg-muted" : ""}
-                                onClick={() => toggleParticipant(player.id)}
+                                className={selectedParticipants.includes(player.id!) ? "bg-muted" : ""}
+                                onClick={() => toggleParticipant(player.id!)}
                               >
                                 <TableCell>
                                   <input
                                     type="checkbox"
-                                    checked={selectedParticipants.includes(player.id)}
+                                    checked={selectedParticipants.includes(player.id!)}
                                     onChange={() => {}}
                                     className="h-4 w-4"
                                   />
@@ -264,13 +261,13 @@ const CreateTournament = () => {
                             teams.map((team) => (
                               <TableRow
                                 key={team.id}
-                                className={selectedParticipants.includes(team.id) ? "bg-muted" : ""}
-                                onClick={() => toggleParticipant(team.id)}
+                                className={selectedParticipants.includes(team.id!) ? "bg-muted" : ""}
+                                onClick={() => toggleParticipant(team.id!)}
                               >
                                 <TableCell>
                                   <input
                                     type="checkbox"
-                                    checked={selectedParticipants.includes(team.id)}
+                                    checked={selectedParticipants.includes(team.id!)}
                                     onChange={() => {}}
                                     className="h-4 w-4"
                                   />

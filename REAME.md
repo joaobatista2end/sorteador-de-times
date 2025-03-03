@@ -14,6 +14,7 @@ Gerenciamento de Times:
 - Editar time
 - Remover time
 - Adicionar jogar ao time
+- Deve ser possível adicionar os jogadores no time
 
 Gerenciamento de Torneios:
 - Criar torneio de times
@@ -22,7 +23,12 @@ Gerenciamento de Torneios:
 - Excluir torneio
 - Gerar disputas entre os times e jogadores
 - Computação dos resultados das partidas
-- Rota com o resultado em tempo real da disputa
+- Um torneio pode ser de times ou de jogadores e deve ser especificado na hora de criação do torneio
+- Deve ser possível adicionar jogadore ou times ao torneio
+- Deve ser possível gerar as partidas necessárias para o torneio
+- Deve ser possível gerenciar as partidas com a finalidade de adicionar os resultados da partida
+- Na partida deve existe dois participantes, que pode ser time ou jogador
+- Na página do torneio deve ser exibido um dashboard com o ranking parcial dos participantes do torneio.
 
 ## Requisitos
 

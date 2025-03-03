@@ -8,6 +8,7 @@ import CreateTournament from "./pages/CreateTournament";
 import Home from "./pages/Home";
 import Players from "./pages/Players";
 import Teams from "./pages/Teams";
+import TournamentDetails from "./pages/TournamentDetails";
 
 // Componente de Torneios definido inline
 const Tournaments = () => {
@@ -102,6 +103,7 @@ export default function App() {
         <Route path="tournaments">
           <Route index element={<Tournaments />} />
           <Route path="new" element={<CreateTournament />} />
+          <Route path=":id" element={<TournamentDetails />} />
         </Route>
       </Route>
     </Routes>
