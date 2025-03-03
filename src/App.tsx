@@ -1,158 +1,109 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { Link, Route, Routes } from "react-router-dom";
+import MainLayout from "./components/layout/MainLayout";
 import { Button } from "./components/ui/button";
-import { Input } from "./components/ui/input";
-import { Table, TableBody, TableRow, TableCell, TableHeader, TableHead } from "./components/ui/table";
-import { getTournament, Tournament } from "./lib/player-sort";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table";
+import { Tournament, TournamentStatus, TournamentType, tournamentsCrud } from "./lib/db";
+import CreateTournament from "./pages/CreateTournament";
+import Home from "./pages/Home";
+import Players from "./pages/Players";
+import Teams from "./pages/Teams";
 
-function PlayerForm({ player, setPlayer, addPlayer, playerIsValid }: { 
-  player: string;
-  setPlayer: (value: string) => void;
-  addPlayer: () => void;
-  playerIsValid: boolean;
-}) {
-  return (
-    <div className="flex gap-x-4">
-      <Input
-        type="text"
-        placeholder="Nome do Jogador"
-        value={player}
-        onChange={(e) => setPlayer(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && playerIsValid && addPlayer()}
-      />
-      <Button disabled={!playerIsValid} onClick={addPlayer}>
-        Adicionar
-      </Button>
-    </div>
-  );
-}
+// Componente de Torneios definido inline
+const Tournaments = () => {
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-function Container({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={`max-w-screen-sm mx-auto ${className ?? ""}`}>{children}</div>;
-}
+  useEffect(() => {
+    loadTournaments();
+  }, []);
 
-function PlayersTable({ players }: { players: string[] }) {
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>
-           ID
-          </TableHead>
-          <TableHead>
-            Nome do Jogador
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      
-      <TableBody>
-        {players.length === 0 ? (
-          <TableRow>
-            <TableCell colSpan={2}>Nenhum jogador adicionado ainda.</TableCell>
-          </TableRow>
-        ) : (
-          players.map((player, index) => (
-            <TableRow key={index}>
-              <TableCell>{index + 1}</TableCell>
-              <TableCell>{player}</TableCell>
-            </TableRow>
-          ))
-        )}
-      </TableBody>
-    </Table>
-  );
-}
-
-function TournamentTable({ tournament }: { tournament: Tournament }) {
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>
-           Jogador 1
-          </TableHead>
-          <TableHead>
-            Jogador 2
-          </TableHead>
-          <TableHead>
-            Resultado
-          </TableHead>
-          <TableHead>
-            Pontos
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      
-      <TableBody>
-        {tournament.length === 0 ? (
-          <TableRow>
-            <TableCell colSpan={4}>Nenhum jogador adicionado ainda.</TableCell>
-          </TableRow>
-        ) : (
-          tournament.map((confrontation, index) => (
-            <TableRow key={index}>
-              <TableCell>{confrontation.players[0]}</TableCell>
-              <TableCell>{confrontation.players[1]}</TableCell>
-              <TableCell>{confrontation.result ?? '-'}</TableCell>
-              <TableCell>{confrontation.scoreboard ?? '-'}</TableCell>
-            </TableRow>
-          ))
-        )}
-      </TableBody>
-    </Table>
-  );
-}
-
-export default function App() {
-  const [player, setPlayer] = useState("");
-  const [players, setPlayers] = useState<Array<string>>([]);
-  const [tournament, setTournament] = useState<Tournament>([]);
-
-  const generateTournament = () => {
-    setTournament(getTournament(players))
-  }
-
-  const addPlayer = () => {
-    setPlayers([...players, player]);
-    setPlayer("");
+  const loadTournaments = async () => {
+    setIsLoading(true);
+    try {
+      const allTournaments = await tournamentsCrud.getAll();
+      setTournaments(allTournaments);
+    } catch (error) {
+      console.error("Erro ao carregar torneios:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const playerIsValid = useMemo(() => {
-    if (!players?.length && !!player?.length) return true
-    else if (players?.length && !players.includes(player) && !!player?.length) return true
-    return false
-  }, [player, players]);
-
   return (
-    <>
-      <Container className="mt-4">
-        { playerIsValid }
-        <PlayerForm 
-          player={player} 
-          setPlayer={setPlayer} 
-          addPlayer={addPlayer} 
-          playerIsValid={playerIsValid} 
-        />
-      </Container>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Gerenciar Torneios</h1>
+        <Button asChild>
+          <Link to="/tournaments/new">Criar Novo Torneio</Link>
+        </Button>
+      </div>
 
-      <Container className="mt-8">
-        <h3>Jogadores</h3>
-        <div className="mt-2">
-          <PlayersTable players={players}/>
+      {isLoading ? (
+        <div className="text-center py-4">Carregando torneios...</div>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {tournaments.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center">
+                    Nenhum torneio cadastrado
+                  </TableCell>
+                </TableRow>
+              ) : (
+                tournaments.map((tournament) => (
+                  <TableRow key={tournament.id}>
+                    <TableCell className="font-medium">{tournament.name}</TableCell>
+                    <TableCell>
+                      {tournament.type === TournamentType.PLAYERS ? "Jogadores" : "Times"}
+                    </TableCell>
+                    <TableCell>
+                      {tournament.status === TournamentStatus.CREATED ? "Criado" :
+                       tournament.status === TournamentStatus.IN_PROGRESS ? "Em Andamento" : "Finalizado"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                      >
+                        <Link to={`/tournaments/${tournament.id}`}>
+                          Ver Detalhes
+                        </Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
+      )}
+    </div>
+  );
+};
 
-        <div className="flex justify-end mt-4">
-          <Button variant="positive" onClick={generateTournament}>
-            Sortear
-          </Button>
-        </div>
-      </Container>
-      
-      <Container className="mt-8">
-        <h3>Jogadores</h3>
-        <div className="mt-2">
-          <TournamentTable tournament={tournament}/>
-        </div>
-      </Container>
-    </>
-  )
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<MainLayout />}>
+        <Route index element={<Home />} />
+        <Route path="players" element={<Players />} />
+        <Route path="teams" element={<Teams />} />
+        <Route path="tournaments">
+          <Route index element={<Tournaments />} />
+          <Route path="new" element={<CreateTournament />} />
+        </Route>
+      </Route>
+    </Routes>
+  );
 }
