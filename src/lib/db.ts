@@ -27,10 +27,16 @@ export enum TournamentStatus {
   FINISHED = 'finished'
 }
 
+export enum TournamentFormat {
+  BEST_OF_3 = 'best_of_3',
+  BEST_OF_5 = 'best_of_5'
+}
+
 export interface Tournament {
   id?: number;
   name: string;
   type: TournamentType;
+  format: TournamentFormat;
   participants: number[]; // IDs de jogadores ou times, dependendo do tipo
   matches: Match[];
   status: TournamentStatus;

@@ -16,7 +16,7 @@ import {
 } from "../components/ui/responsive-dialog";
 import { ScrollArea } from "../components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Match, Player, Team, Tournament, TournamentStatus, TournamentType, playersCrud, teamsCrud, tournamentsCrud } from "../lib/db";
+import { Match, Player, Team, Tournament, TournamentFormat, TournamentStatus, TournamentType, playersCrud, teamsCrud, tournamentsCrud } from "../lib/db";
 
 type Participant = Player | Team;
 
@@ -48,6 +48,9 @@ const TournamentDetails = () => {
   const [availableParticipants, setAvailableParticipants] = useState<Participant[]>([]);
   const [isAddParticipantDialogOpen, setIsAddParticipantDialogOpen] = useState(false);
   const [selectedParticipantId, setSelectedParticipantId] = useState<string>("");
+  const [isParticipantDetailsOpen, setIsParticipantDetailsOpen] = useState(false);
+  const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
+  const [teamPlayers, setTeamPlayers] = useState<Player[]>([]);
 
   useEffect(() => {
     if (tournamentId) {
@@ -232,56 +235,111 @@ const TournamentDetails = () => {
 
   const generateMatches = async () => {
     if (!tournament) return;
-    
+
     try {
-      // Create matches for all participants
-      const newMatches: Match[] = [];
-      const now = new Date();
-      
-      for (let i = 0; i < tournament.participants.length; i++) {
-        for (let j = i + 1; j < tournament.participants.length; j++) {
-          // Verificar se a partida já existe
-          const matchExists = tournament.matches.some(
-            match => 
-              (match.participant1Id === tournament.participants[i] && 
-               match.participant2Id === tournament.participants[j]) ||
-              (match.participant1Id === tournament.participants[j] && 
-               match.participant2Id === tournament.participants[i])
-          );
+      // Verificar se já existem partidas
+      if (tournament.matches.length > 0) {
+        // Verificar se todas as combinações possíveis já foram geradas
+        const participantIds = tournament.participants;
+        const possibleMatchCount = (participantIds.length * (participantIds.length - 1)) / 2;
+        
+        // Para torneios de times, multiplicamos pelo número de partidas por confronto (3 ou 5)
+        const matchesPerConfrontation = tournament.type === TournamentType.TEAMS 
+          ? (tournament.format === TournamentFormat.BEST_OF_3 ? 3 : 5) 
+          : 1;
           
-          if (!matchExists) {
-            newMatches.push({
-              id: Date.now() + Math.floor(Math.random() * 1000) + i + j, // Temporary ID
-              tournamentId: tournament.id!,
-              participant1Id: tournament.participants[i],
-              participant2Id: tournament.participants[j],
-              createdAt: now,
-              updatedAt: now
-            });
+        const totalPossibleMatches = possibleMatchCount * matchesPerConfrontation;
+        
+        // Se já temos todas as partidas possíveis, alertamos o usuário
+        if (tournament.matches.length >= totalPossibleMatches) {
+          alert("Todas as partidas possíveis já foram geradas.");
+          return;
+        }
+      }
+
+      // Gerar novas partidas
+      const newMatches: Match[] = [];
+      const participantIds = tournament.participants;
+
+      // Para cada par de participantes
+      for (let i = 0; i < participantIds.length; i++) {
+        for (let j = i + 1; j < participantIds.length; j++) {
+          const participant1Id = participantIds[i];
+          const participant2Id = participantIds[j];
+
+          // Verificar se já existe uma partida entre esses participantes
+          const existingMatches = tournament.matches.filter(
+            (m) =>
+              (m.participant1Id === participant1Id && m.participant2Id === participant2Id) ||
+              (m.participant1Id === participant2Id && m.participant2Id === participant1Id)
+          );
+
+          // Para torneios de jogadores, geramos apenas uma partida por par
+          if (tournament.type === TournamentType.PLAYERS) {
+            if (existingMatches.length === 0) {
+              // Criar uma nova partida
+              const newMatch: Match = {
+                id: Date.now() + i + j, // ID temporário
+                tournamentId: tournament.id!,
+                participant1Id,
+                participant2Id,
+                createdAt: new Date(),
+                updatedAt: new Date()
+              };
+              newMatches.push(newMatch);
+            }
+          } 
+          // Para torneios de times, geramos múltiplas partidas (melhor de 3 ou melhor de 5)
+          else if (tournament.type === TournamentType.TEAMS) {
+            const matchesNeeded = tournament.format === TournamentFormat.BEST_OF_3 ? 3 : 5;
+            
+            // Se não temos partidas suficientes para este confronto, geramos as faltantes
+            if (existingMatches.length < matchesNeeded) {
+              for (let k = existingMatches.length; k < matchesNeeded; k++) {
+                const newMatch: Match = {
+                  id: Date.now() + i + j + k, // ID temporário
+                  tournamentId: tournament.id!,
+                  participant1Id,
+                  participant2Id,
+                  createdAt: new Date(),
+                  updatedAt: new Date()
+                };
+                newMatches.push(newMatch);
+              }
+            }
           }
         }
       }
-      
+
       if (newMatches.length === 0) {
-        alert("Todas as partidas possíveis já foram geradas");
+        alert("Não há novas partidas para gerar.");
         return;
       }
-      
-      // Update tournament with new matches and status
-      const result = await tournamentsCrud.update(tournament.id!, {
-        matches: [...tournament.matches, ...newMatches],
+
+      // Atualizar o torneio com as novas partidas
+      const updatedMatches = [...tournament.matches, ...newMatches];
+      const updatedTournament = {
+        ...tournament,
+        matches: updatedMatches,
+        status: TournamentStatus.IN_PROGRESS,
+        updatedAt: new Date()
+      };
+
+      const success = await tournamentsCrud.update(tournament.id!, {
+        matches: updatedMatches,
         status: TournamentStatus.IN_PROGRESS
       });
       
-      if (result) {
-        alert(`${newMatches.length} partidas geradas com sucesso!`);
-        loadTournament();
+      if (success) {
+        setTournament(updatedTournament);
+        setMatches(updatedMatches);
+        alert(`${newMatches.length} novas partidas foram geradas com sucesso!`);
       } else {
-        alert("Erro ao gerar partidas");
+        alert("Erro ao gerar partidas. Por favor, tente novamente.");
       }
     } catch (error) {
       console.error("Erro ao gerar partidas:", error);
-      alert("Erro ao gerar partidas");
+      alert("Ocorreu um erro ao gerar as partidas.");
     }
   };
 
@@ -307,6 +365,29 @@ const TournamentDetails = () => {
   const getParticipantName = (id: number) => {
     const participant = participants.find(p => p.id === id);
     return participant ? participant.name : `Participante #${id}`;
+  };
+
+  const openParticipantDetails = async (participant: Participant) => {
+    setSelectedParticipant(participant);
+    
+    // Se for um time, carrega os jogadores
+    if (tournament?.type === TournamentType.TEAMS) {
+      const team = participant as Team;
+      if (team.players && team.players.length > 0) {
+        const players: Player[] = [];
+        for (const playerId of team.players) {
+          const player = await playersCrud.getById(playerId);
+          if (player) {
+            players.push(player);
+          }
+        }
+        setTeamPlayers(players);
+      } else {
+        setTeamPlayers([]);
+      }
+    }
+    
+    setIsParticipantDetailsOpen(true);
   };
 
   if (isLoading) {
@@ -556,7 +637,14 @@ const TournamentDetails = () => {
                           </p>
                         )}
                       </div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => openParticipantDetails(participant)}
+                        className="h-8 w-8"
+                      >
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -681,6 +769,98 @@ const TournamentDetails = () => {
               disabled={!selectedParticipantId}
             >
               Adicionar
+            </Button>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
+
+      {/* Participant Details Dialog */}
+      <ResponsiveDialog open={isParticipantDetailsOpen} onOpenChange={setIsParticipantDetailsOpen}>
+        <ResponsiveDialogContent className="sm:max-w-md">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Detalhes do Participante</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
+              Informações sobre {selectedParticipant?.name}
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
+          
+          <div className="py-4">
+            {selectedParticipant && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-2 rounded-md bg-muted/20">
+                  <span>Nome</span>
+                  <span className="font-medium">{selectedParticipant.name}</span>
+                </div>
+                
+                <div className="flex justify-between items-center p-2 rounded-md bg-muted/20">
+                  <span>Data de Criação</span>
+                  <span className="font-medium">{new Date(selectedParticipant.createdAt).toLocaleDateString()}</span>
+                </div>
+                
+                {tournament?.type === TournamentType.TEAMS && (
+                  <>
+                    <div className="flex justify-between items-center p-2 rounded-md bg-muted/20">
+                      <span>Jogadores</span>
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        <span>{(selectedParticipant as Team).players?.length || 0}</span>
+                      </Badge>
+                    </div>
+                    
+                    {teamPlayers.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="text-sm font-medium mb-2">Lista de Jogadores</h4>
+                        <ScrollArea className="h-[200px] pr-4">
+                          <div className="space-y-2">
+                            {teamPlayers.map((player) => (
+                              <div key={player.id} className="p-2 rounded-md bg-muted/10">
+                                <p className="font-medium">{player.name}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    )}
+                  </>
+                )}
+                
+                {/* Estatísticas do participante no torneio */}
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium mb-2">Estatísticas no Torneio</h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="p-2 rounded-md bg-muted/20 text-center">
+                      <p className="text-xs text-muted-foreground">Vitórias</p>
+                      <p className="font-bold">
+                        {ranking.find(r => r.id === selectedParticipant.id)?.wins || 0}
+                      </p>
+                    </div>
+                    <div className="p-2 rounded-md bg-muted/20 text-center">
+                      <p className="text-xs text-muted-foreground">Empates</p>
+                      <p className="font-bold">
+                        {ranking.find(r => r.id === selectedParticipant.id)?.draws || 0}
+                      </p>
+                    </div>
+                    <div className="p-2 rounded-md bg-muted/20 text-center">
+                      <p className="text-xs text-muted-foreground">Derrotas</p>
+                      <p className="font-bold">
+                        {ranking.find(r => r.id === selectedParticipant.id)?.losses || 0}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-2 p-2 rounded-md bg-primary/10 text-center">
+                    <p className="text-xs text-muted-foreground">Pontos Totais</p>
+                    <p className="font-bold text-lg">
+                      {ranking.find(r => r.id === selectedParticipant.id)?.points || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <ResponsiveDialogFooter className="gap-2 sm:gap-0">
+            <Button className="w-full sm:w-auto" onClick={() => setIsParticipantDetailsOpen(false)}>
+              Fechar
             </Button>
           </ResponsiveDialogFooter>
         </ResponsiveDialogContent>
