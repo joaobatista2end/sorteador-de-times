@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
+import { Breadcrumb } from "../components/ui/breadcrumb";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../components/ui/form";
@@ -103,16 +104,22 @@ const CreateTournament = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <h1 className="text-3xl font-bold mb-6">Criar Novo Torneio</h1>
+    <div className="space-y-6">
+      <Breadcrumb 
+        segments={[
+          { name: "Torneios", href: "/tournaments" },
+          { name: "Criar Torneio" }
+        ]} 
+      />
+      
+      <h1 className="text-3xl font-bold">Criar Torneio</h1>
 
       <Card>
         <CardHeader>
           <CardTitle>
             {step === 1 && "Passo 1: Informações Básicas"}
-            {step === 2 && "Passo 2: Tipo de Torneio"}
-            {step === 3 && "Passo 3: Selecionar Participantes"}
-            {step === 4 && "Passo 4: Confirmar e Criar"}
+            {step === 2 && "Passo 2: Selecionar Participantes"}
+            {step === 3 && "Passo 3: Confirmar Criação"}
           </CardTitle>
         </CardHeader>
         

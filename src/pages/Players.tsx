@@ -1,6 +1,7 @@
 import { CalendarIcon, Edit, Trash, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "../components/ui/badge";
+import { Breadcrumb } from "../components/ui/breadcrumb";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
@@ -82,8 +83,10 @@ const Players = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center flex-wrap gap-4">
-        <h1 className="text-3xl font-bold">Gerenciar Jogadores</h1>
+      <Breadcrumb segments={[{ name: "Jogadores" }]} />
+      
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Jogadores</h1>
       </div>
 
       <div className="flex gap-4 flex-wrap">

@@ -49,3 +49,7 @@ No tema escuro preciso que a cor primária seja dourado(gradiente dourado) e azu
 
 - Preciso de uma interface mais moderna, sem tantas tabelas. Quando possível, utilize alternativas mais modernas para a exibição dos dados
 a não ser tabelas.
+
+- Adicione breadcrumbs para que o usuário se localize
+
+- Altere o layout da página de gerenciamento de torneios, para utilizar cards ao invés de tabelas.

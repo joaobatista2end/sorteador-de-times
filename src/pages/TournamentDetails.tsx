@@ -2,6 +2,7 @@ import { ChevronRight, Edit, Plus, Trash, Trophy, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Badge } from "../components/ui/badge";
+import { Breadcrumb } from "../components/ui/breadcrumb";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -318,6 +319,13 @@ const TournamentDetails = () => {
 
   return (
     <div className="space-y-6">
+      <Breadcrumb 
+        segments={[
+          { name: "Torneios", href: "/tournaments" },
+          { name: tournament.name }
+        ]} 
+      />
+      
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">{tournament.name}</h1>
