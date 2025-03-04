@@ -6,7 +6,6 @@ import { Button } from "../components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Player, Team, playersCrud, teamsCrud } from "../lib/db";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 
@@ -22,7 +21,6 @@ const Teams = () => {
   const [teamToDelete, setTeamToDelete] = useState<Team | null>(null);
   const [isAddPlayerDialogOpen, setIsAddPlayerDialogOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
   const [teamPlayers, setTeamPlayers] = useState<Player[]>([]);
   const [searchPlayerQuery, setSearchPlayerQuery] = useState("");
   const [newPlayerName, setNewPlayerName] = useState("");
@@ -112,14 +110,16 @@ const Teams = () => {
         setSelectedTeam({...team}); // Fallback para o time passado como parâmetro
         loadTeamPlayers(team);
       }
-      setSelectedPlayerId("");
+      setSearchPlayerQuery("");
+      setNewPlayerName("");
       setIsAddPlayerDialogOpen(true);
     } catch (error) {
       console.error("Erro ao abrir diálogo de jogadores:", error);
       // Fallback para o time passado como parâmetro
       setSelectedTeam({...team});
       loadTeamPlayers(team);
-      setSelectedPlayerId("");
+      setSearchPlayerQuery("");
+      setNewPlayerName("");
       setIsAddPlayerDialogOpen(true);
     }
   };
@@ -148,10 +148,9 @@ const Teams = () => {
       
       console.log("Criando jogador com nome:", newPlayerName);
       
-      // Criar o jogador com dados mais completos
+      // Criar o jogador sem o createdAt que está causando o erro
       const newPlayer = await playersCrud.add({ 
         name: newPlayerName,
-        createdAt: new Date().toISOString()
       });
       
       console.log("Resposta da criação do jogador:", newPlayer);
@@ -542,9 +541,9 @@ const Teams = () => {
                       />
                       <Button 
                         onClick={handleCreatePlayerInTeam}
-                        disabled={!newPlayerName.trim()}
+                        disabled={!newPlayerName.trim() || isCreatingPlayer}
                       >
-                        Criar e Adicionar
+                        {isCreatingPlayer ? "Criando..." : "Criar e Adicionar"}
                       </Button>
                     </div>
                   </TabsContent>
