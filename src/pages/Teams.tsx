@@ -1,4 +1,4 @@
-import { CalendarIcon, Edit, Trash, Users } from "lucide-react";
+import { CalendarIcon, Edit, Trash, Users, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "../components/ui/badge";
 import { Breadcrumb } from "../components/ui/breadcrumb";
@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Player, Team, playersCrud, teamsCrud } from "../lib/db";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 
 const Teams = () => {
   const [teams, setTeams] = useState<Team[]>([]);
@@ -23,6 +24,9 @@ const Teams = () => {
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
   const [teamPlayers, setTeamPlayers] = useState<Player[]>([]);
+  const [searchPlayerQuery, setSearchPlayerQuery] = useState("");
+  const [newPlayerName, setNewPlayerName] = useState("");
+  const [isCreatingPlayer, setIsCreatingPlayer] = useState(false);
 
   useEffect(() => {
     loadTeams();
@@ -135,37 +139,140 @@ const Teams = () => {
     }
   };
 
-  const handleAddPlayerToTeam = async () => {
-    if (!selectedTeam || !selectedPlayerId) return;
+  const handleCreatePlayerInTeam = async () => {
+    if (!newPlayerName.trim() || !selectedTeam) return;
     
     try {
-      const playerId = parseInt(selectedPlayerId);
+      // Desabilitar o botão durante a operação
+      setIsCreatingPlayer(true);
+      
+      console.log("Criando jogador com nome:", newPlayerName);
+      
+      // Criar o jogador com dados mais completos
+      const newPlayer = await playersCrud.add({ 
+        name: newPlayerName,
+        createdAt: new Date().toISOString()
+      });
+      
+      console.log("Resposta da criação do jogador:", newPlayer);
+      
+      // Verificar se o jogador foi criado corretamente
+      if (!newPlayer) {
+        console.error("Falha ao criar jogador: Nenhum dado retornado");
+        alert("Erro ao criar jogador. Tente novamente.");
+        return;
+      }
+      
+      // Se o ID não for definido, tente obter o jogador recém-criado pelo nome
+      if (!newPlayer.id) {
+        console.warn("Jogador criado sem ID, tentando buscar por nome...");
+        const allPlayers = await playersCrud.getAll();
+        const createdPlayer = allPlayers.find(p => p.name === newPlayerName);
+        
+        if (createdPlayer && createdPlayer.id) {
+          console.log("Jogador encontrado pelo nome:", createdPlayer);
+          
+          // Usar o jogador encontrado
+          const updatedPlayers = [...selectedTeam.players, createdPlayer.id];
+          
+          // Atualizar o time com o jogador
+          await teamsCrud.update(selectedTeam.id!, {
+            ...selectedTeam,
+            players: updatedPlayers
+          });
+          
+          // Atualizar a interface
+          setNewPlayerName("");
+          setSelectedTeam({...selectedTeam, players: updatedPlayers});
+          setTeamPlayers(current => [...current, createdPlayer]);
+          
+          // Recarregar os dados
+          await loadPlayers();
+          await loadTeams();
+          
+          return;
+        } else {
+          console.error("Não foi possível encontrar o jogador criado");
+          alert("Jogador criado, mas não foi possível adicioná-lo ao time automaticamente.");
+          return;
+        }
+      }
+      
+      // Continuar com o fluxo normal se o ID existir
+      setNewPlayerName("");
+      
+      console.log("Atualizando time com novo jogador ID:", newPlayer.id);
+      
+      // Atualizar o time com o novo jogador
+      const updatedPlayers = [...selectedTeam.players, newPlayer.id];
+      
+      await teamsCrud.update(selectedTeam.id!, {
+        ...selectedTeam,
+        players: updatedPlayers
+      });
+      
+      // Atualizar a interface
+      setSelectedTeam({...selectedTeam, players: updatedPlayers});
+      setTeamPlayers(current => [...current, newPlayer]);
+      
+      // Recarregar os dados
+      await loadPlayers();
+      await loadTeams();
+      
+    } catch (error) {
+      console.error("Erro detalhado ao criar jogador:", error);
+      alert("Erro ao criar jogador. Detalhes no console.");
+    } finally {
+      setIsCreatingPlayer(false);
+    }
+  };
+
+  const handleAddPlayerToTeam = async (playerId: string) => {
+    if (!selectedTeam || !playerId) return;
+    
+    try {
+      const playerIdNum = parseInt(playerId);
       
       // Verificar se o jogador já está no time
-      if (selectedTeam.players.includes(playerId)) {
+      if (selectedTeam.players.includes(playerIdNum)) {
         console.log("Jogador já está no time");
         return;
       }
       
-      // Adicionar jogador ao time
-      const success = await teamsCrud.addPlayerToTeam(selectedTeam.id!, playerId);
-      
-      if (success) {
-        // Recarregar os dados do time e dos jogadores
-        const updatedTeam = await teamsCrud.getById(selectedTeam.id!);
-        if (updatedTeam) {
-          setSelectedTeam(updatedTeam);
-          loadTeamPlayers(updatedTeam);
-        }
-        setSelectedPlayerId("");
-        
-        // Recarregar a lista de times para atualizar a contagem de jogadores na tabela principal
-        loadTeams();
-      } else {
-        console.error("Falha ao adicionar jogador ao time");
+      // Encontrar o jogador na lista atual para atualização imediata da UI
+      const playerToAdd = players.find(p => p.id === playerIdNum);
+      if (!playerToAdd) {
+        console.error("Jogador não encontrado");
+        return;
       }
+      
+      // Atualizar time com novo jogador
+      const updatedPlayers = [...selectedTeam.players, playerIdNum];
+      
+      const updatedTeam = {
+        ...selectedTeam,
+        players: updatedPlayers
+      };
+      
+      // Salvar no banco de dados
+      await teamsCrud.update(selectedTeam.id!, updatedTeam);
+      
+      // Atualizar estado local de forma imediata
+      setSelectedTeam(updatedTeam);
+      setTeamPlayers(current => [...current, playerToAdd]);
+      
+      // Forçar atualização da lista de jogadores disponíveis
+      setPlayers(current => {
+        // Criar uma nova lista, forçando renderização
+        return [...current]; 
+      });
+      
+      // Atualizar os dados do banco
+      await loadTeams();
+      await loadPlayers();
     } catch (error) {
       console.error("Erro ao adicionar jogador ao time:", error);
+      alert("Erro ao adicionar jogador. Tente novamente.");
     }
   };
 
@@ -194,9 +301,34 @@ const Teams = () => {
     }
   };
 
-  // Calcular jogadores disponíveis (que não estão no time selecionado)
-  const availablePlayers = players.filter((player) => 
-    selectedTeam ? !selectedTeam.players.includes(player.id!) : true
+  // Modificar o método getAvailablePlayers para ser mais confiável
+  const getAvailablePlayers = () => {
+    if (!selectedTeam) return [];
+    
+    // Verificar quais jogadores não estão em nenhum time ou já estão no time selecionado
+    return players.filter(player => {
+      // Verificar se o jogador já está no time atual
+      if (selectedTeam.players.includes(player.id!)) {
+        return false;
+      }
+      
+      // Verificar se o jogador está em algum outro time
+      for (const team of teams) {
+        if (team.id !== selectedTeam.id && team.players.includes(player.id!)) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  };
+
+  // Jogadores disponíveis (que não estão em nenhum time)
+  const availablePlayers = getAvailablePlayers();
+  
+  // Filtramos com base na busca
+  const filteredAvailablePlayers = availablePlayers.filter(player => 
+    player.name.toLowerCase().includes(searchPlayerQuery.toLowerCase())
   );
 
   return (
@@ -334,12 +466,15 @@ const Teams = () => {
           if (!open) {
             setSelectedTeam(null);
             setTeamPlayers([]);
+            setSearchPlayerQuery("");
+            setNewPlayerName("");
+            setIsCreatingPlayer(false);
             // Recarregar a lista de times ao fechar o diálogo
             loadTeams();
           }
         }}
       >
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>Gerenciar Jogadores do Time: {selectedTeam?.name}</DialogTitle>
             <DialogDescription>
@@ -347,64 +482,94 @@ const Teams = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+          {/* Layout modificado para horizontal em vez de vertical */}
+          <div className="space-y-6 py-4">
+            {/* Seção de adicionar jogadores */}
             <Card>
               <CardHeader>
                 <CardTitle>Adicionar Jogador</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Select 
-                    value={selectedPlayerId} 
-                    onValueChange={setSelectedPlayerId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um jogador" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availablePlayers.length === 0 ? (
-                        <SelectItem value="empty" disabled>
-                          Nenhum jogador disponível
-                        </SelectItem>
-                      ) : (
-                        availablePlayers.map((player) => (
-                          <SelectItem 
-                            key={player.id} 
-                            value={player.id!.toString()}
-                          >
-                            {player.name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <Button 
-                    onClick={handleAddPlayerToTeam}
-                    disabled={!selectedPlayerId}
-                  >
-                    Adicionar
-                  </Button>
-                </div>
+              <CardContent>
+                <Tabs defaultValue="existing">
+                  <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="existing">Jogadores Existentes</TabsTrigger>
+                    <TabsTrigger value="new">Novo Jogador</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="existing">
+                    <div className="space-y-4">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Buscar jogadores..."
+                          className="pl-8"
+                          value={searchPlayerQuery}
+                          onChange={(e) => setSearchPlayerQuery(e.target.value)}
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto p-1">
+                        {filteredAvailablePlayers.length === 0 ? (
+                          <div className="col-span-full text-center text-muted-foreground py-4">
+                            Nenhum jogador disponível
+                          </div>
+                        ) : (
+                          filteredAvailablePlayers.map((player) => (
+                            <div 
+                              key={player.id} 
+                              className="flex justify-between items-center p-2 bg-muted/20 rounded-md"
+                            >
+                              <span className="truncate">{player.name}</span>
+                              <Button
+                                size="sm"
+                                onClick={() => handleAddPlayerToTeam(player.id!.toString())}
+                              >
+                                Adicionar
+                              </Button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="new">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Nome do novo jogador"
+                        value={newPlayerName}
+                        onChange={(e) => setNewPlayerName(e.target.value)}
+                      />
+                      <Button 
+                        onClick={handleCreatePlayerInTeam}
+                        disabled={!newPlayerName.trim()}
+                      >
+                        Criar e Adicionar
+                      </Button>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
 
+            {/* Seção de jogadores do time */}
             <Card>
               <CardHeader>
                 <CardTitle>Jogadores do Time</CardTitle>
               </CardHeader>
               <CardContent>
                 {teamPlayers.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-2">
+                  <div className="text-center text-muted-foreground py-4">
                     Este time não possui jogadores
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[200px] overflow-y-auto p-1">
                     {teamPlayers.map((player) => (
                       <div 
                         key={player.id} 
                         className="flex justify-between items-center p-2 bg-muted/20 rounded-md"
                       >
-                        <span>{player.name}</span>
+                        <span className="truncate">{player.name}</span>
                         <Button
                           variant="destructive"
                           size="sm"

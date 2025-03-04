@@ -98,7 +98,7 @@ const Tournaments = () => {
                         </Badge>
                       )}
                     </div>
-                    <div className="flex items-center text-sm text-muted-foreground">
+                    <div className="flex items-center text-sm text-muted-foreground mt-2">
                       <CalendarIcon className="mr-1 h-3 w-3" />
                       <span>Criado em {new Date(tournament.createdAt).toLocaleDateString()}</span>
                     </div>

@@ -53,3 +53,7 @@ a não ser tabelas.
 - Adicione breadcrumbs para que o usuário se localize
 
 - Altere o layout da página de gerenciamento de torneios, para utilizar cards ao invés de tabelas.
+
+- Preciso que ao adicionar um time, os jogadores exibidos na lista não podem ter sido associados a um time. Preciso que melhore a usabilidade na adição de jogadores em time. Seria interessante poder criar o jogador dirento no próprio time, ou seja ao cadastrar um time ou em sua edição. Seria existir uma pesquisa de jogadores cadastrados e que não possuísem times. 
+
+- Preciso que a modal de gerenciamento de time não seja dividida na vertical, traga um layout na horizontal trazendo mais espaço para as opções de criar jogador e adicionar jogador existente.
